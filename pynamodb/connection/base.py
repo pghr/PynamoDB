@@ -263,8 +263,8 @@ class Connection(object):
                     for attr in six.itervalues(item):
                         _convert_binary(attr)
         if UNPROCESSED_ITEMS in data:
-            for item_mapping in six.itervalues(data[UNPROCESSED_ITEMS]):
-                for item in six.itervalues(item_mapping):
+            for item_list in six.itervalues(data[UNPROCESSED_ITEMS]):
+                for item in item_list:
                     for attr in six.itervalues(item):
                         _convert_binary(attr)
 
