@@ -5,6 +5,8 @@ from base64 import b64decode
 import logging
 
 import six
+import time
+import math
 from botocore.session import get_session
 from botocore.exceptions import BotoCoreError
 from botocore.client import ClientError
@@ -235,11 +237,29 @@ class Connection(object):
             operation_model
         )
         prepared_request = self.client._endpoint.create_request(request_dict, operation_model)
-        response = self.requests_session.send(prepared_request)
-        if response.status_code >= 300:
-            data = response.json()
-            botocore_expected_format = {"Error": {"Message": data.get("message", ""), "Code": data.get("__type", "")}}
-            raise ClientError(botocore_expected_format, operation_name)
+
+        retry, tries, max_tries, = True, 0, 13
+        while retry and tries <= max_tries:
+            tries += 1
+            retry = False
+
+            response = self.requests_session.send(prepared_request)
+
+            if response.status_code >= 300:
+                data = response.json()
+                if 'ProvisionedThroughputExceededException' in data.get('__type', ''):
+                    retry = True
+                elif response.status_code == 500:
+                    retry = True
+
+                if not retry or tries > max_tries:
+                    botocore_expected_format = {"Error": {"Message": data.get("message", ""), "Code": data.get("__type", "")}}
+                    raise ClientError(botocore_expected_format, operation_name)
+
+
+            if retry:
+                time.sleep(math.pow(2, tries)*50/1000)
+
         data = response.json()
         # Simulate botocore's binary attribute handling
         if ITEM in data:
