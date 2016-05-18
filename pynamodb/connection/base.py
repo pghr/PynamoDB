@@ -243,19 +243,24 @@ class Connection(object):
             tries += 1
             retry = False
 
-            response = self.requests_session.send(prepared_request)
+            try:
+                response = self.requests_session.send(
+					prepared_request,
+					timeout=60, # same as botocore
+				)
+            except requests.RequestException:
+                retry = True
+            else:
+                if response.status_code >= 300:
+                    data = response.json()
+                    if 'ProvisionedThroughputExceededException' in data.get('__type', ''):
+                        retry = True
+                    elif response.status_code == 500:
+                        retry = True
 
-            if response.status_code >= 300:
-                data = response.json()
-                if 'ProvisionedThroughputExceededException' in data.get('__type', ''):
-                    retry = True
-                elif response.status_code == 500:
-                    retry = True
-
-                if not retry or tries > max_tries:
-                    botocore_expected_format = {"Error": {"Message": data.get("message", ""), "Code": data.get("__type", "")}}
-                    raise ClientError(botocore_expected_format, operation_name)
-
+                    if not retry or tries > max_tries:
+                        botocore_expected_format = {"Error": {"Message": data.get("message", ""), "Code": data.get("__type", "")}}
+                        raise ClientError(botocore_expected_format, operation_name)
 
             if retry:
                 time.sleep(math.pow(2, tries)*50/1000)
