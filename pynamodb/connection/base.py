@@ -283,8 +283,9 @@ class Connection(object):
             for attr in six.itervalues(data[LAST_EVALUATED_KEY]):
                 _convert_binary(attr)
         if UNPROCESSED_KEYS in data:
-            for attr in six.itervalues(data[UNPROCESSED_KEYS][KEYS]):
-                _convert_binary(attr)
+            if KEYS in data[UNPROCESSED_KEYS]:
+                for attr in six.itervalues(data[UNPROCESSED_KEYS][KEYS]):
+                    _convert_binary(attr)
         if UNPROCESSED_ITEMS in data:
             for item_list in six.itervalues(data[UNPROCESSED_ITEMS]):
                 for item in item_list:
